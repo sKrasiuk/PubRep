@@ -2,6 +2,7 @@
 using System.Text;
 using Egzaminas.Data;
 using Egzaminas.Services;
+using Egzaminas.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -53,10 +54,11 @@ public class Program
             });
 
         // Register custom services
-        builder.Services.AddScoped<AuthService>();
-        builder.Services.AddScoped<PersonService>();
-        builder.Services.AddScoped<ImageService>();
-        builder.Services.AddScoped<AdminService>();
+        builder.Services.AddScoped<IAuthService, AuthService>();
+        builder.Services.AddScoped<IPersonService, PersonService>();
+        builder.Services.AddScoped<IImageService, ImageService>();
+        builder.Services.AddScoped<IAdminService, AdminService>();
+        builder.Services.AddScoped<IUserPasswordService, UserPasswordService>();
 
         // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
         builder.Services.AddEndpointsApiExplorer();

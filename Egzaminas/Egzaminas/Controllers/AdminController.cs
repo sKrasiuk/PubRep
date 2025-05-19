@@ -1,4 +1,4 @@
-using Egzaminas.Services;
+using Egzaminas.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,9 +9,9 @@ namespace Egzaminas.Controllers
     [Authorize(Roles = "Admin")]
     public class AdminController : ControllerBase
     {
-        private readonly AdminService _adminService;
+        private readonly IAdminService _adminService;
 
-        public AdminController(AdminService adminService)
+        public AdminController(IAdminService adminService)
         {
             _adminService = adminService;
         }

@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using Egzaminas.Models.DTOs;
-using Egzaminas.Services;
+using Egzaminas.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,9 +12,9 @@ namespace Egzaminas.Controllers
     [Authorize]
     public class PersonController : ControllerBase
     {
-        private readonly PersonService _personService;
+        private readonly IPersonService _personService;
 
-        public PersonController(PersonService personService)
+        public PersonController(IPersonService personService)
         {
             _personService = personService;
         }
@@ -79,6 +79,28 @@ namespace Egzaminas.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
+        }
+
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles ="User")]
+        [HttpPost("ChangePassword")]
+        public async Task<IActionResult> ChangeUserPassword(string newPassword)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+            {
+                return Unauthorized(new { message = "User ID not found in token." });
+            }
+
+            int userId = int.Parse(userIdClaim.Value);
+
+            var (success, message) = await _personService.ChangeUserPasswordAsync(userId, newPassword);
+
+            if (!success)
+            {
+                return BadRequest(new { message });
+            }
+
+            return Ok(new { message });
         }
 
         // [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "User, Admin")]

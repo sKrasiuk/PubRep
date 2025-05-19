@@ -1,20 +1,24 @@
 using System;
 using Egzaminas.Data;
+using Egzaminas.Helpers;
 using Egzaminas.Models;
 using Egzaminas.Models.DTOs;
+using Egzaminas.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace Egzaminas.Services;
 
-public class PersonService
+public class PersonService : IPersonService
 {
     private readonly ApplicationDbContext _context;
-    private readonly ImageService _imageService;
+    private readonly IImageService _imageService;
+    private readonly IUserPasswordService _passwordService;
 
-    public PersonService(ApplicationDbContext context, ImageService imageService)
+    public PersonService(ApplicationDbContext context, IImageService imageService, IUserPasswordService passwordService)
     {
         _context = context;
         _imageService = imageService;
+        _passwordService = passwordService;
     }
 
     private void UpdatePersonInfoFields(PersonInfo person, AddressInfo address, UpdatePersonInfoDto dto, byte[] profilePictureData)
@@ -151,6 +155,7 @@ public class PersonService
         }
 
         var person = user.PersonInfo;
+        var previousAddressId = person.AddressInfoId;
         var address = person.Address;
 
         byte[] profilePicture = null;
@@ -159,9 +164,82 @@ public class PersonService
             profilePicture = await _imageService.ProcessProfilePicture(updateDto.ProfilePicture);
         }
 
-        UpdatePersonInfoFields(person, address, updateDto, profilePicture);
+        bool addressChanged =
+            !string.IsNullOrWhiteSpace(updateDto.City) ||
+            !string.IsNullOrWhiteSpace(updateDto.StreetName) ||
+            (updateDto.HouseNumber.HasValue && updateDto.HouseNumber.Value > 0) ||
+            (updateDto.FlatNumber.HasValue && updateDto.FlatNumber.Value > 0);
+
+        if (addressChanged)
+        {
+            string newCity = !string.IsNullOrWhiteSpace(updateDto.City) ? updateDto.City : address.City;
+            string newStreet = !string.IsNullOrWhiteSpace(updateDto.StreetName) ? updateDto.StreetName : address.StreetName;
+            int newHouseNumber = updateDto.HouseNumber ?? address.HouseNumber;
+            int newFlatNumber = updateDto.FlatNumber ?? address.FlatNumber;
+
+            var existingAddress = await _context.Addresses.FirstOrDefaultAsync(a =>
+                a.City == newCity &&
+                a.StreetName == newStreet &&
+                a.HouseNumber == newHouseNumber &&
+                a.FlatNumber == newFlatNumber);
+
+            int sharers = await _context.People.CountAsync(p => p.AddressInfoId == address.Id);
+
+            if (existingAddress != null)
+            {
+                if (existingAddress.Id != address.Id)
+                {
+                    person.AddressInfoId = existingAddress.Id;
+                    person.Address = existingAddress;
+                }
+                UpdatePersonInfoFields(person, null, updateDto, profilePicture);
+            }
+            else if (sharers > 1)
+            {
+                var newAddress = new AddressInfo
+                {
+                    City = newCity,
+                    StreetName = newStreet,
+                    HouseNumber = newHouseNumber,
+                    FlatNumber = newFlatNumber
+                };
+                _context.Addresses.Add(newAddress);
+                await _context.SaveChangesAsync();
+
+                person.AddressInfoId = newAddress.Id;
+                person.Address = newAddress;
+                UpdatePersonInfoFields(person, null, updateDto, profilePicture);
+            }
+            else
+            {
+                UpdatePersonInfoFields(person, address, updateDto, profilePicture);
+            }
+        }
+        else
+        {
+            UpdatePersonInfoFields(person, address, updateDto, profilePicture);
+        }
 
         await _context.SaveChangesAsync();
+
+        if (addressChanged && previousAddressId != person.AddressInfoId)
+        {
+            bool isOrphan = !await _context.People.AnyAsync(p => p.AddressInfoId == previousAddressId);
+            if (isOrphan)
+            {
+                var orphanAddress = await _context.Addresses.FindAsync(previousAddressId);
+                if (orphanAddress != null)
+                {
+                    _context.Addresses.Remove(orphanAddress);
+                    await _context.SaveChangesAsync();
+                }
+            }
+        }
+    }
+
+    public Task<(bool Success, string Message)> ChangeUserPasswordAsync(int userId, string newPassword)
+    {
+        return _passwordService.ChangeUserPasswordAsync(userId, newPassword);
     }
 
     // public async Task<PersonInfo> UpdateName(int userId, string name)

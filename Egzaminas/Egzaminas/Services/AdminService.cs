@@ -2,17 +2,20 @@ using System;
 using Egzaminas.Data;
 using Egzaminas.Helpers;
 using Egzaminas.Models;
+using Egzaminas.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace Egzaminas.Services;
 
-public class AdminService
+public class AdminService : IAdminService
 {
     private readonly ApplicationDbContext _context;
+    private readonly IUserPasswordService _passwordService;
 
-    public AdminService(ApplicationDbContext context)
+    public AdminService(ApplicationDbContext context, IUserPasswordService passwordService)
     {
         _context = context;
+        _passwordService = passwordService;
     }
 
     public async Task<(bool Success, string Message)> DeleteUserByIdAsync(int userId)
@@ -117,28 +120,9 @@ public class AdminService
         return (true, $"Role for user {user.UserName} set to '{role}'.");
     }
 
-    public async Task<(bool Success, string Message)> ChangeUserPasswordAsync(int userId, string newPassword)
+    public Task<(bool Success, string Message)> ChangeUserPasswordAsync(int userId, string newPassword)
     {
-        if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 6)
-        {
-            return (false, "Password must be at least 6 characters long.");
-        }
-
-        var user = await _context.Users.FindAsync(userId);
-        if (user == null)
-        {
-            return (false, "User not found.");
-        }
-
-        var salt = PasswordHelper.GenerateSalt();
-        var passwordHash = PasswordHelper.HashPassword(newPassword, salt);
-
-        user.Password = passwordHash;
-        user.Salt = Convert.ToBase64String(salt);
-
-        await _context.SaveChangesAsync();
-
-        return (true, $"Password for user '{user.UserName}' has been changed.");
+        return _passwordService.ChangeUserPasswordAsync(userId, newPassword);
     }
 
     // Helper methods
@@ -150,7 +134,7 @@ public class AdminService
 
             if (adminCount <= 1)
             {
-                return (false, "Cannot delete the last admin user");
+                return (false, "Cannot delete admin user");
             }
         }
 

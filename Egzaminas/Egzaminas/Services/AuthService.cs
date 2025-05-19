@@ -5,12 +5,13 @@ using Egzaminas.Data;
 using Egzaminas.Helpers;
 using Egzaminas.Models;
 using Egzaminas.Models.DTOs;
+using Egzaminas.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Egzaminas.Services;
 
-public class AuthService
+public class AuthService : IAuthService
 {
     private readonly ApplicationDbContext _context;
     private readonly IConfiguration _configuration;

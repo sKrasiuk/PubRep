@@ -2,10 +2,11 @@ using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using Egzaminas.Services.Interfaces;
 
 namespace Egzaminas.Services;
 
-public class ImageService
+public class ImageService : IImageService
 {
     public async Task<byte[]> ProcessProfilePicture(IFormFile file)
     {
