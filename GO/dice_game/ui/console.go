@@ -12,32 +12,26 @@ import (
 	"unicode"
 )
 
-type UI interface {
-	ClearScr()
-	PauseForUser()
-	GoodbyeMsg()
-	PlayerNamePrompt(p, pCount int) string
-	ScoreLimitPrompt() int
-	GameMenuPrompt() int
-	GameStartPrompt(scoreLimit int)
-	RollPrompt()
-	PlayersCountPrompt() int
-	DisplayInfo(participants []models.Participant)
-	DisplayRoundOutcome(participants []models.Participant, rollRes []models.RollResult, winnerName string)
-	AnnounceWinner(winner models.Participant)
-}
+const (
+	minScoreLimit     = 3
+	maxScoreLimit     = 9
+	minPlayerNameLen  = 4
+	maxPlayerNameLen  = 15
+	minPlayersAllowed = 1
+	maxPlayersAllowed = 2
+)
 
-type consoleUI struct {
+type console struct {
 	reader *bufio.Reader
 }
 
 func New() UI {
-	return &consoleUI{
+	return &console{
 		reader: bufio.NewReader(os.Stdin),
 	}
 }
 
-func (u *consoleUI) ClearScr() {
+func (u *console) ClearScr() {
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
 		cmd = exec.Command("cmd", "/c", "cls")
@@ -48,7 +42,7 @@ func (u *consoleUI) ClearScr() {
 	cmd.Run()
 }
 
-func (u *consoleUI) getUserInput(prompt string) (string, error) {
+func (u *console) getUserInput(prompt string) (string, error) {
 	fmt.Print(prompt)
 	input, err := u.reader.ReadString('\n')
 
@@ -59,29 +53,25 @@ func (u *consoleUI) getUserInput(prompt string) (string, error) {
 	return strings.TrimSpace(input), nil
 }
 
-func (u *consoleUI) PauseForUser() {
+func (u *console) PauseForUser() {
 	fmt.Print("\nPress 'Enter' to continue...")
 	u.reader.ReadString('\n')
 }
 
-func (u *consoleUI) handleInputErr(message string) {
+func (u *console) handleInputErr(message string) {
 	fmt.Println(message)
 	u.PauseForUser()
 }
 
-func (u *consoleUI) welcomeMsg() {
-	fmt.Printf("------- Welcome to the Dice Game! -------\n\n")
+func (u *console) printBanner(message string) {
+	fmt.Printf("------- \t%s\t -------\n\n", message)
 }
 
-func (u *consoleUI) GoodbyeMsg() {
+func (u *console) GoodbyeMsg() {
 	fmt.Println("\nCome to play again...\nGoodbye!")
 }
 
-func (u *consoleUI) choiceMsg() {
-	fmt.Printf("------- Please make a choice -------\n\n")
-}
-
-func (u *consoleUI) PlayerNamePrompt(p, pCount int) string {
+func (u *console) PlayerNamePrompt(p, pCount int) string {
 	for {
 		u.ClearScr()
 
@@ -96,8 +86,8 @@ func (u *consoleUI) PlayerNamePrompt(p, pCount int) string {
 			continue
 		}
 
-		if name == "" || len(name) < 4 {
-			u.handleInputErr("Name must be at least 4 characters long. Please try again.")
+		if name == "" || len(name) < minPlayerNameLen || len(name) > maxPlayerNameLen {
+			u.handleInputErr(fmt.Sprintf("Name must be between %d and %d characters long.", minPlayerNameLen, maxPlayerNameLen))
 			continue
 		}
 
@@ -107,11 +97,11 @@ func (u *consoleUI) PlayerNamePrompt(p, pCount int) string {
 	}
 }
 
-func (u *consoleUI) ScoreLimitPrompt() int {
+func (u *console) ScoreLimitPrompt() int {
 	for {
 		u.ClearScr()
 
-		input, err := u.getUserInput("Enter the score limit (3 - 9): ")
+		input, err := u.getUserInput(fmt.Sprintf("Enter the score limit (%d - %d): ", minScoreLimit, maxScoreLimit))
 		if err != nil {
 			u.handleInputErr("An error occurred, please try again.")
 			continue
@@ -124,7 +114,7 @@ func (u *consoleUI) ScoreLimitPrompt() int {
 		}
 
 		if limit < 3 || limit > 9 {
-			u.handleInputErr("The limit must be between 3 and 9. Please try again.")
+			u.handleInputErr(fmt.Sprintf("The limit must be between %d and %d. Please try again.", minScoreLimit, maxScoreLimit))
 			continue
 		}
 
@@ -132,11 +122,11 @@ func (u *consoleUI) ScoreLimitPrompt() int {
 	}
 }
 
-func (u *consoleUI) GameMenuPrompt() int {
+func (u *console) GameMenuPrompt() int {
 	for {
 		u.ClearScr()
-		u.welcomeMsg()
-		u.choiceMsg()
+		u.printBanner("Welcome to the Dice Game!")
+		u.printBanner("Please make a choice")
 
 		fmt.Println("1. Play a game")
 		fmt.Println("0. Exit")
@@ -162,21 +152,21 @@ func (u *consoleUI) GameMenuPrompt() int {
 	}
 }
 
-func (u *consoleUI) GameStartPrompt(scoreLimit int) {
-	fmt.Printf("------- Starting the game: First to collect %d points wins! -------\n\n", scoreLimit)
+func (u *console) GameStartPrompt(scoreLimit int) {
+	u.printBanner(fmt.Sprintf("Starting the game: First to collect %d points wins!", scoreLimit))
 	u.PauseForUser()
 }
 
-func (u *consoleUI) RollPrompt() {
+func (u *console) RollPrompt() {
 	fmt.Println(">>> Roll your dices! <<<")
 	u.PauseForUser()
 }
 
-func (u *consoleUI) PlayersCountPrompt() int {
+func (u *console) PlayersCountPrompt() int {
 	for {
 		u.ClearScr()
 
-		input, err := u.getUserInput("Enter the number of players (1 - 2): ")
+		input, err := u.getUserInput(fmt.Sprintf("Enter the number of players (%d - %d): ", minPlayersAllowed, maxPlayersAllowed))
 		if err != nil {
 			u.handleInputErr("An error occurred, please try again.")
 			continue
@@ -189,7 +179,7 @@ func (u *consoleUI) PlayersCountPrompt() int {
 		}
 
 		if count < 1 || count > 2 {
-			u.handleInputErr("The number of players must be between 1 and 2. Please try again.")
+			u.handleInputErr(fmt.Sprintf("The number of players must be between %d and %d. Please try again.", minPlayersAllowed, maxPlayersAllowed))
 			continue
 		}
 
@@ -197,7 +187,7 @@ func (u *consoleUI) PlayersCountPrompt() int {
 	}
 }
 
-func (u *consoleUI) DisplayInfo(participants []models.Participant) {
+func (u *console) DisplayInfo(participants []models.Participant) {
 	if len(participants) == 0 {
 		return
 	}
@@ -207,11 +197,7 @@ func (u *consoleUI) DisplayInfo(participants []models.Participant) {
 	fmt.Println()
 }
 
-func (u *consoleUI) announceRoundWinner(name string) {
-	fmt.Printf("\n>>> %s wins the round! <<<\n", name)
-}
-
-func (u *consoleUI) DisplayRoundOutcome(participants []models.Participant, rollRes []models.RollResult, winnerName string) {
+func (u *console) DisplayRoundOutcome(participants []models.Participant, rollRes []models.RollResult, winnerName string) {
 	u.ClearScr()
 	u.DisplayInfo(participants)
 
@@ -220,13 +206,13 @@ func (u *consoleUI) DisplayRoundOutcome(participants []models.Participant, rollR
 	}
 
 	if winnerName != "" {
-		u.announceRoundWinner(winnerName)
+		fmt.Printf("\n>>> %s wins the round! <<<\n", winnerName)
 	} else {
 		fmt.Println("\n>>> It's a tie! No points awarded. <<<")
 	}
 }
 
-func (u *consoleUI) AnnounceWinner(winner models.Participant) {
+func (u *console) AnnounceWinner(winner models.Participant) {
 	u.ClearScr()
 	name := winner.GetName()
 

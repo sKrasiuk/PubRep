@@ -1,18 +1,9 @@
 package models
 
-type Participant interface {
-	RollDices() int
-	GetName() string
-	GetScore() int
-	AddToScore(p int)
-	GetLimit() int
-	IsAI() bool
-}
-
 type participant struct {
 	name  string
 	score int
-	dices [2]dice
+	dices [2]*dice
 	limit int
 }
 
@@ -20,7 +11,7 @@ func newParticipant(name string, limit int) participant {
 	return participant{
 		name:  name,
 		score: 0,
-		dices: [2]dice{newDice(), newDice()},
+		dices: [2]*dice{newDice(), newDice()},
 		limit: limit,
 	}
 }

@@ -6,10 +6,10 @@ import (
 
 type dice struct{}
 
-func newDice() dice {
-	return dice{}
+func newDice() *dice {
+	return &dice{}
 }
 
-func (d dice) roll() int {
+func (d *dice) roll() int {
 	return rand.IntN(6) + 1
 }

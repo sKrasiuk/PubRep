@@ -116,8 +116,14 @@ func TestFindGameWinner(t *testing.T) {
 			participants := tc.setup()
 			actualWinner := findGameWinner(participants)
 
-			if (actualWinner == nil && tc.expectedWinner != nil) || (actualWinner != nil && tc.expectedWinner == nil) || (actualWinner != nil && tc.expectedWinner != nil && actualWinner.GetName() != tc.expectedWinner.GetName()) {
+			if actualWinner == nil && tc.expectedWinner == nil {
+				return
+			}
+
+			if actualWinner == nil || tc.expectedWinner == nil {
 				t.Errorf("findGameWinner() got winner: %v, want %v", actualWinner, tc.expectedWinner)
+			} else if actualWinner.GetName() != tc.expectedWinner.GetName() {
+				t.Errorf("findGameWinner() got winner name: %v, want %v", actualWinner.GetName(), tc.expectedWinner.GetName())
 			}
 		})
 	}
