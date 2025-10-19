@@ -113,7 +113,7 @@ func (u *console) ScoreLimitPrompt() int {
 			continue
 		}
 
-		if limit < 3 || limit > 9 {
+		if limit < minScoreLimit || limit > maxScoreLimit {
 			u.handleInputErr(fmt.Sprintf("The limit must be between %d and %d. Please try again.", minScoreLimit, maxScoreLimit))
 			continue
 		}
@@ -178,7 +178,7 @@ func (u *console) PlayersCountPrompt() int {
 			continue
 		}
 
-		if count < 1 || count > 2 {
+		if count < minPlayersAllowed || count > maxPlayersAllowed {
 			u.handleInputErr(fmt.Sprintf("The number of players must be between %d and %d. Please try again.", minPlayersAllowed, maxPlayersAllowed))
 			continue
 		}
